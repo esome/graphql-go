@@ -5,6 +5,7 @@ package extensions
 
 import (
 	"encoding/json"
+
 	"github.com/graph-gophers/graphql-go/internal/common"
 )
 
@@ -28,7 +29,7 @@ func NewDirectiveList(list common.DirectiveList) DirectiveList {
 		for _, arg := range d.Args {
 			args[arg.Name.Name] = DirectiveArg{
 				Name:  arg.Name.Name,
-				Value: arg.Value.Value(nil),
+				Value: arg.Value,
 			}
 		}
 		directives[d.Name.Name] = DirectiveItem{
@@ -71,17 +72,20 @@ type DirectiveItem struct {
 	Args DirectiveArgList
 }
 
+type DirectiveArgList struct {
+	args map[string]DirectiveArg
+}
+
 // Get returns a mapped directive argument by its given name.
 // If the directive argument cannot be found (e.g. invalid or not attached) the method returns nil
-func (l DirectiveArgList) Get(name string, dest interface{}) (bool, error) {
+func (l DirectiveArgList) Get(name string, dest interface{}) (_ bool, err error) {
 	if arg, ok := l.args[name]; ok {
-		b, err := json.Marshal(arg.Value)
-		if err != nil {
+		var b []byte
+		if b, err = json.Marshal(arg.Value.Value(nil)); err != nil {
 			return false, err
 		}
 
-		err = json.Unmarshal(b, dest)
-		if err != nil {
+		if err = json.Unmarshal(b, dest); err != nil {
 			return false, err
 		}
 
@@ -91,12 +95,8 @@ func (l DirectiveArgList) Get(name string, dest interface{}) (bool, error) {
 	return false, nil
 }
 
-type DirectiveArgList struct {
-	args map[string]DirectiveArg
-}
-
-// DirectiveArg sdf
+// DirectiveArg represents an argument provided to a directive attached to an element directly in the schema
 type DirectiveArg struct {
 	Name  string
-	Value interface{}
+	Value common.Literal
 }
